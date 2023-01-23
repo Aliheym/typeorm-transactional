@@ -173,11 +173,6 @@ export const initializeTransactionalContext = (options?: Partial<TypeormTransact
          * Store current manager
          */
         repository[TYPEORM_ENTITY_MANAGER_NAME] = repository.manager;
-
-        /**
-         * Patch repository object
-         */
-        patchManager(repository);
       }
 
       return repository;
