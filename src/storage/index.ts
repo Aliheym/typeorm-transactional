@@ -1,3 +1,3 @@
-import { StorageLayer } from './storage-layer';
+import { Storage } from './storage';
 
-export const storageLayer = new StorageLayer();
+export const storage = new Storage();

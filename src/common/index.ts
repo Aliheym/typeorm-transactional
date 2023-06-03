@@ -1,15 +1,17 @@
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { EventEmitter } from 'events';
+
 import {
   TYPEORM_DATA_SOURCE_NAME,
   TYPEORM_DATA_SOURCE_NAME_PREFIX,
   TYPEORM_ENTITY_MANAGER_NAME,
   TYPEORM_HOOK_NAME,
 } from './constants';
-import { EventEmitter } from 'events';
+import { StorageDriver as StorageDriverEnum } from '../enums/storage-driver';
 import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
+import { StorageDriver } from '../storage/driver/interface';
 import { isDataSource } from '../utils';
-import { storageLayer } from '../storage';
-import { StorageLayerDriver } from '../storage/driver/interface';
+import { storage } from '../storage';
 
 export type DataSourceName = string | 'default';
 
@@ -23,6 +25,13 @@ interface TypeormTransactionalOptions {
    * You can set this options to `0` or `Infinity` to indicate an unlimited number of listeners.
    */
   maxHookHandlers: number;
+
+  /**
+   * Controls storage driver used for providing persistency during the async request timespan.
+   * You can force any of the available drivers with this option.
+   * By default, the modern AsyncLocalStorage will be preferred, if it is supported by your runtime.
+   */
+  storageDriver: StorageDriverEnum;
 }
 
 /**
@@ -60,22 +69,20 @@ const dataSources = new Map<DataSourceName, DataSource>();
 const data: TypeormTransactionalData = {
   options: {
     maxHookHandlers: 10,
+    storageDriver: StorageDriverEnum.AUTO,
   },
 };
 
-export const getTransactionalContext = () => storageLayer.get();
+export const getTransactionalContext = () => storage.get();
 
-export const getEntityManagerByDataSourceName = (
-  context: StorageLayerDriver,
-  name: DataSourceName,
-) => {
+export const getEntityManagerByDataSourceName = (context: StorageDriver, name: DataSourceName) => {
   if (!dataSources.has(name)) return null;
 
   return (context.get(TYPEORM_DATA_SOURCE_NAME_PREFIX + name) as EntityManager) || null;
 };
 
 export const setEntityManagerByDataSourceName = (
-  context: StorageLayerDriver,
+  context: StorageDriver,
   name: DataSourceName,
   entityManager: EntityManager | null,
 ) => {
@@ -195,7 +202,8 @@ export const initializeTransactionalContext = (options?: Partial<TypeormTransact
 
   patchManager(Repository.prototype);
 
-  return storageLayer.create();
+  const { storageDriver } = getTransactionalOptions();
+  return storage.create(storageDriver);
 };
 
 export const addTransactionalDataSource = (input: DataSource | AddTransactionalDataSourceInput) => {
@@ -224,8 +232,8 @@ export const getDataSourceByName = (name: DataSourceName) => dataSources.get(nam
 
 export const deleteDataSourceByName = (name: DataSourceName) => dataSources.delete(name);
 
-export const getHookInContext = (context: StorageLayerDriver | undefined) =>
+export const getHookInContext = (context: StorageDriver | undefined) =>
   context?.get(TYPEORM_HOOK_NAME) as EventEmitter | null;
 
-export const setHookInContext = (context: StorageLayerDriver, emitter: EventEmitter | null) =>
+export const setHookInContext = (context: StorageDriver, emitter: EventEmitter | null) =>
   context.set(TYPEORM_HOOK_NAME, emitter);
