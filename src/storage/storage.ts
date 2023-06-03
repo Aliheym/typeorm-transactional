@@ -27,7 +27,7 @@ export class Storage {
   public get() {
     if (!this.driver) {
       throw new Error(
-        'You must initialize StorageLayer before accessing... TODO: use proper error',
+        'No storage driver defined in your app ... please call initializeTransactionalContext() before application start.',
       );
     }
 
