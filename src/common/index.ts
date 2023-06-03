@@ -86,7 +86,7 @@ export const setEntityManagerByDataSourceName = (
 
 const getEntityManagerInContext = (dataSourceName: DataSourceName) => {
   const context = getTransactionalContext();
-  if (!context || !context.store) return null;
+  if (!context || !context.active) return null;
 
   return getEntityManagerByDataSourceName(context, dataSourceName);
 };

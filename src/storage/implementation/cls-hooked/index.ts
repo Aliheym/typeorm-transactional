@@ -3,14 +3,18 @@ import { Namespace, createNamespace, getNamespace } from 'cls-hooked';
 import { StorageKey, StorageValue, StorageLayerContext } from '../interface';
 import { NAMESPACE_TOKEN } from './constants';
 
-export class CslHookedContext implements StorageLayerContext {
+export class ClsHookedDriver implements StorageLayerContext {
   private context: Namespace;
 
   constructor() {
     this.context = getNamespace(NAMESPACE_TOKEN) ?? createNamespace(NAMESPACE_TOKEN);
   }
 
-  get store() {
+  get active() {
+    return !!this.context.active;
+  }
+
+  private get store() {
     return this.context.active;
   }
 

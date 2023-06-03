@@ -1,11 +1,12 @@
 export type StorageKey = string;
 export type StorageValue = unknown;
+export type Storage = Map<StorageKey, StorageValue>;
 
 export interface StorageLayerContext {
-  store: Map<StorageKey, StorageValue> | undefined;
+  active: boolean;
   get(key: StorageKey): StorageValue;
   set(key: StorageKey, value: StorageValue): void;
-  run<T>(cb: () => T): T;
+  run<T>(cb: () => Promise<T>): Promise<T>;
 }
 
 export interface StorageLayer {
