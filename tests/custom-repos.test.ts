@@ -6,6 +6,7 @@ import { PostRepository } from './repositories/post.repository';
 import { extendPostRepository } from './repositories/extend-post-repository';
 
 import {
+  StorageDriver,
   addTransactionalDataSource,
   initializeTransactionalContext,
   runInTransaction,
@@ -33,7 +34,11 @@ describe('Custom repositories tests', () => {
       synchronize: true,
     });
 
-    initializeTransactionalContext();
+    const storageDriver = process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+      ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+      : StorageDriver.AUTO;
+
+    initializeTransactionalContext({ storageDriver });
 
     addTransactionalDataSource(dataSource);
 

@@ -6,6 +6,7 @@ import {
   runInTransaction,
   runOnTransactionCommit,
   Propagation,
+  StorageDriver,
 } from '../src';
 import { PostReaderService } from './services/post-reader.service';
 import { PostWriterService } from './services/post-writer.service';
@@ -90,7 +91,11 @@ describe('Common tests', () => {
       synchronize: true,
     });
 
-    initializeTransactionalContext();
+    const storageDriver = process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+      ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+      : StorageDriver.AUTO;
+
+    initializeTransactionalContext({ storageDriver });
 
     addTransactionalDataSource(dataSource);
     addTransactionalDataSource({

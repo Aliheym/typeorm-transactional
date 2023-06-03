@@ -9,6 +9,7 @@ import {
   runOnTransactionCommit,
   runOnTransactionComplete,
   runOnTransactionRollback,
+  StorageDriver,
 } from '../src';
 import { Post } from './entities/Post.entity';
 import { NestPostReaderService } from './services/nest-post-reader.service';
@@ -27,7 +28,11 @@ describe('Integration with Nest.js', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    initializeTransactionalContext();
+    const storageDriver = process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+      ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+      : StorageDriver.AUTO;
+
+    initializeTransactionalContext({ storageDriver });
 
     app = await Test.createTestingModule({
       imports: [
