@@ -39,7 +39,8 @@
   },
   "dependencies": {
     "@types/cls-hooked": "^4.3.3",
-    "cls-hooked": "^4.2.2"
+    "cls-hooked": "^4.2.2",
+    "semver": "^7.5.1"
   },
   "devDependencies": {
     "@nestjs/common": "^9.0.7",
@@ -47,6 +48,7 @@
     "@nestjs/testing": "^9.0.7",
     "@nestjs/typeorm": "^9.0.0",
     "@types/jest": "^28.1.6",
+    "@types/semver": "^7.5.0",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
     "eslint": "^8.20.0",
