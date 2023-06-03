@@ -46,13 +46,9 @@ export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) 
 export const createEventEmitterInNewContext = (context: Namespace) => {
   const options = getTransactionalOptions();
 
-  return context.runAndReturn(() => {
-    const emitter = new EventEmitter();
-    emitter.setMaxListeners(options.maxHookHandlers);
-
-    context.bindEmitter(emitter);
-    return emitter;
-  });
+  const emitter = new EventEmitter();
+  emitter.setMaxListeners(options.maxHookHandlers);
+  return emitter;
 };
 
 export const runInNewHookContext = async (context: Namespace, cb: () => unknown) => {
