@@ -30,7 +30,7 @@ describe('Integration with Nest.js', () => {
   beforeAll(async () => {
     const storageDriver = process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
       ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
-      : StorageDriver.AUTO;
+      : StorageDriver.CLS_HOOKED;
 
     initializeTransactionalContext({ storageDriver });
 

@@ -69,7 +69,7 @@ const dataSources = new Map<DataSourceName, DataSource>();
 const data: TypeormTransactionalData = {
   options: {
     maxHookHandlers: 10,
-    storageDriver: StorageDriverEnum.AUTO,
+    storageDriver: StorageDriverEnum.CLS_HOOKED,
   },
 };
 
