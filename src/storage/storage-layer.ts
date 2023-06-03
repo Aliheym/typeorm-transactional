@@ -27,9 +27,9 @@ export class StorageLayer {
   }
 
   private createSupportedContext(): StorageLayerContext {
-    if (process && gte(process.versions.node, '16.0.0')) {
-      return new AsyncLocalStorageContext();
-    }
+    // if (process && gte(process.versions.node, '16.0.0')) {
+    //   return new AsyncLocalStorageContext();
+    // }
 
     return new CslHookedContext();
   }

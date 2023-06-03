@@ -1,7 +1,5 @@
-import { createNamespace, getNamespace, Namespace } from 'cls-hooked';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import {
-  NAMESPACE_NAME,
   TYPEORM_DATA_SOURCE_NAME,
   TYPEORM_DATA_SOURCE_NAME_PREFIX,
   TYPEORM_ENTITY_MANAGER_NAME,
@@ -10,6 +8,8 @@ import {
 import { EventEmitter } from 'events';
 import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
 import { isDataSource } from '../utils';
+import { storageLayer } from '../storage';
+import { StorageLayerContext } from '../storage/implementation/interface';
 
 export type DataSourceName = string | 'default';
 
@@ -63,16 +63,19 @@ const data: TypeormTransactionalData = {
   },
 };
 
-export const getTransactionalContext = () => getNamespace(NAMESPACE_NAME);
+export const getTransactionalContext = () => storageLayer.get();
 
-export const getEntityManagerByDataSourceName = (context: Namespace, name: DataSourceName) => {
+export const getEntityManagerByDataSourceName = (
+  context: StorageLayerContext,
+  name: DataSourceName,
+) => {
   if (!dataSources.has(name)) return null;
 
   return (context.get(TYPEORM_DATA_SOURCE_NAME_PREFIX + name) as EntityManager) || null;
 };
 
 export const setEntityManagerByDataSourceName = (
-  context: Namespace,
+  context: StorageLayerContext,
   name: DataSourceName,
   entityManager: EntityManager | null,
 ) => {
@@ -83,7 +86,7 @@ export const setEntityManagerByDataSourceName = (
 
 const getEntityManagerInContext = (dataSourceName: DataSourceName) => {
   const context = getTransactionalContext();
-  if (!context || !context.active) return null;
+  if (!context || !context.store) return null;
 
   return getEntityManagerByDataSourceName(context, dataSourceName);
 };
@@ -192,7 +195,7 @@ export const initializeTransactionalContext = (options?: Partial<TypeormTransact
 
   patchManager(Repository.prototype);
 
-  return createNamespace(NAMESPACE_NAME) || getNamespace(NAMESPACE_NAME);
+  return storageLayer.create();
 };
 
 export const addTransactionalDataSource = (input: DataSource | AddTransactionalDataSourceInput) => {
@@ -221,8 +224,8 @@ export const getDataSourceByName = (name: DataSourceName) => dataSources.get(nam
 
 export const deleteDataSourceByName = (name: DataSourceName) => dataSources.delete(name);
 
-export const getHookInContext = (context: Namespace | undefined) =>
+export const getHookInContext = (context: StorageLayerContext | undefined) =>
   context?.get(TYPEORM_HOOK_NAME) as EventEmitter | null;
 
-export const setHookInContext = (context: Namespace, emitter: EventEmitter | null) =>
+export const setHookInContext = (context: StorageLayerContext, emitter: EventEmitter | null) =>
   context.set(TYPEORM_HOOK_NAME, emitter);

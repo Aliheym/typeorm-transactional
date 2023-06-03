@@ -77,7 +77,7 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
       }
     };
 
-    return context.runAndReturn(async () => {
+    return context.run(async () => {
       const currentTransaction = getEntityManagerByDataSourceName(context, connectionName);
       switch (propagation) {
         case Propagation.MANDATORY:
