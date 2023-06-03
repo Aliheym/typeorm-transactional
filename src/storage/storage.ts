@@ -51,6 +51,6 @@ export class Storage {
       return AsyncLocalStorageDriver;
     }
 
-    return AsyncLocalStorageDriver;
+    return ClsHookedDriver;
   }
 }
