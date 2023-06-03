@@ -2,7 +2,7 @@ export type StorageKey = string;
 export type StorageValue = unknown;
 export type Storage = Map<StorageKey, StorageValue>;
 
-export interface StorageLayerContext {
+export interface StorageLayerDriver {
   active: boolean;
   get(key: StorageKey): StorageValue;
   set(key: StorageKey, value: StorageValue): void;
@@ -10,6 +10,6 @@ export interface StorageLayerContext {
 }
 
 export interface StorageLayer {
-  create(): StorageLayerContext;
-  get(): StorageLayerContext;
+  create(): StorageLayerDriver;
+  get(): StorageLayerDriver;
 }

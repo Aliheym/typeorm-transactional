@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import { StorageKey, StorageValue, StorageLayerContext, Storage } from '../interface';
+import { StorageKey, StorageValue, StorageLayerDriver, Storage } from '../interface';
 
 class Store {
   // Ref: https://github.com/Jeff-Lewis/cls-hooked/blob/master/context.js#L24
@@ -48,7 +48,7 @@ class Store {
   }
 }
 
-export class AsyncLocalStorageDriver implements StorageLayerContext {
+export class AsyncLocalStorageDriver implements StorageLayerDriver {
   private context: AsyncLocalStorage<Store>;
 
   constructor() {

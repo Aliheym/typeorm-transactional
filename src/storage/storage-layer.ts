@@ -1,11 +1,11 @@
 import { gte } from 'semver';
 
-import type { StorageLayerContext } from './implementation/interface';
-import { AsyncLocalStorageDriver } from './implementation/async-local-storage';
-import { ClsHookedDriver } from './implementation/cls-hooked';
+import type { StorageLayerDriver } from './driver/interface';
+import { AsyncLocalStorageDriver } from './driver/async-local-storage';
+import { ClsHookedDriver } from './driver/cls-hooked';
 
 export class StorageLayer {
-  private context: StorageLayerContext;
+  private context: StorageLayerDriver;
 
   public create() {
     if (this.context) {
@@ -26,7 +26,7 @@ export class StorageLayer {
     return this.context;
   }
 
-  private createSupportedContext(): StorageLayerContext {
+  private createSupportedContext(): StorageLayerDriver {
     if (process && gte(process.versions.node, '16.0.0')) {
       return new AsyncLocalStorageDriver();
     }

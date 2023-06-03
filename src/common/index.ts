@@ -9,7 +9,7 @@ import { EventEmitter } from 'events';
 import { TypeOrmUpdatedPatchError } from '../errors/typeorm-updated-patch';
 import { isDataSource } from '../utils';
 import { storageLayer } from '../storage';
-import { StorageLayerContext } from '../storage/implementation/interface';
+import { StorageLayerDriver } from '../storage/driver/interface';
 
 export type DataSourceName = string | 'default';
 
@@ -66,7 +66,7 @@ const data: TypeormTransactionalData = {
 export const getTransactionalContext = () => storageLayer.get();
 
 export const getEntityManagerByDataSourceName = (
-  context: StorageLayerContext,
+  context: StorageLayerDriver,
   name: DataSourceName,
 ) => {
   if (!dataSources.has(name)) return null;
@@ -75,7 +75,7 @@ export const getEntityManagerByDataSourceName = (
 };
 
 export const setEntityManagerByDataSourceName = (
-  context: StorageLayerContext,
+  context: StorageLayerDriver,
   name: DataSourceName,
   entityManager: EntityManager | null,
 ) => {
@@ -224,8 +224,8 @@ export const getDataSourceByName = (name: DataSourceName) => dataSources.get(nam
 
 export const deleteDataSourceByName = (name: DataSourceName) => dataSources.delete(name);
 
-export const getHookInContext = (context: StorageLayerContext | undefined) =>
+export const getHookInContext = (context: StorageLayerDriver | undefined) =>
   context?.get(TYPEORM_HOOK_NAME) as EventEmitter | null;
 
-export const setHookInContext = (context: StorageLayerContext, emitter: EventEmitter | null) =>
+export const setHookInContext = (context: StorageLayerDriver, emitter: EventEmitter | null) =>
   context.set(TYPEORM_HOOK_NAME, emitter);

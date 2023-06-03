@@ -6,7 +6,7 @@ import {
   getTransactionalOptions,
   setHookInContext,
 } from '../common';
-import { StorageLayerContext } from '../storage/implementation/interface';
+import { StorageLayerDriver } from '../storage/driver/interface';
 
 export const getTransactionalContextHook = () => {
   const context = getTransactionalContext();
@@ -43,7 +43,7 @@ export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) 
   }
 };
 
-export const createEventEmitterInNewContext = (context: StorageLayerContext) => {
+export const createEventEmitterInNewContext = (context: StorageLayerDriver) => {
   const options = getTransactionalOptions();
 
   const emitter = new EventEmitter();
@@ -51,7 +51,7 @@ export const createEventEmitterInNewContext = (context: StorageLayerContext) => 
   return emitter;
 };
 
-export const runInNewHookContext = async (context: StorageLayerContext, cb: () => unknown) => {
+export const runInNewHookContext = async (context: StorageLayerDriver, cb: () => unknown) => {
   const hook = createEventEmitterInNewContext(context);
 
   return await context.run(() => {

@@ -1,9 +1,9 @@
 import { Namespace, createNamespace, getNamespace } from 'cls-hooked';
 
-import { StorageKey, StorageValue, StorageLayerContext } from '../interface';
+import { StorageKey, StorageValue, StorageLayerDriver } from '../interface';
 import { NAMESPACE_TOKEN } from './constants';
 
-export class ClsHookedDriver implements StorageLayerContext {
+export class ClsHookedDriver implements StorageLayerDriver {
   private context: Namespace;
 
   constructor() {
