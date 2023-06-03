@@ -14,7 +14,7 @@ export class Storage {
 
   public create(storageDriverEnum?: StorageDriverEnum) {
     if (this.driver) {
-      // In theory we could ensure the driver is of given type...
+      // We probably should not allow calling this function when driver is already defined
       return this.driver;
     }
 
