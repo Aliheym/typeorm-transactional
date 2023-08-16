@@ -3,6 +3,7 @@ export {
   addTransactionalDataSource,
   getDataSourceByName,
   deleteDataSourceByName,
+  getTransactionalContext,
 } from './common';
 export {
   runOnTransactionCommit,
