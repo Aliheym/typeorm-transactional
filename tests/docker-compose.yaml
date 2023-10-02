@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  postgres:
+  postgres-simple:
     image: postgres:alpine
     ports:
       - '5435:5432'
@@ -9,3 +9,24 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "test", "-U", "postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+      start_period: 3s
+
+  postgres-nest:
+    image: postgres:alpine
+    ports:
+      - '5436:5432'
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "test", "-U", "postgres"]
+      interval: 1s
+      timeout: 5s
+      retries: 10
+      start_period: 3s

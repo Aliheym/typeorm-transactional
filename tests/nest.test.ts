@@ -1,36 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import {
-  initializeTransactionalContext,
-  addTransactionalDataSource,
-  Propagation,
-  runInTransaction,
-  runOnTransactionCommit,
-  runOnTransactionComplete,
-  runOnTransactionRollback,
-  StorageDriver,
-} from '../src';
-import { Post } from './entities/Post.entity';
-import { NestPostReaderService } from './services/nest-post-reader.service';
-import { NestPostWriterService } from './services/nest-post-writer.service';
 
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { User } from './entities/User.entity';
+import { UserReaderService } from './services/user-reader.service';
+import { UserWriterService } from './services/user-writer.service';
+
+import { initializeTransactionalContext, addTransactionalDataSource, StorageDriver } from '../src';
 
 describe('Integration with Nest.js', () => {
   let app: TestingModule;
 
-  let readerService: NestPostReaderService;
-  let writerService: NestPostWriterService;
+  let readerService: UserReaderService;
+  let writerService: UserWriterService;
 
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    const storageDriver = process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
-      ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
-      : StorageDriver.CLS_HOOKED;
+    const storageDriver =
+      process.env.TEST_STORAGE_DRIVER && process.env.TEST_STORAGE_DRIVER in StorageDriver
+        ? StorageDriver[process.env.TEST_STORAGE_DRIVER as keyof typeof StorageDriver]
+        : StorageDriver.CLS_HOOKED;
 
     initializeTransactionalContext({ storageDriver });
 
@@ -41,10 +31,11 @@ describe('Integration with Nest.js', () => {
             return {
               type: 'postgres',
               host: 'localhost',
-              port: 5435,
+              port: 5436,
               username: 'postgres',
               password: 'postgres',
-              entities: [Post],
+              database: 'test',
+              entities: [User],
               synchronize: true,
               logging: false,
             };
@@ -58,100 +49,54 @@ describe('Integration with Nest.js', () => {
           },
         }),
 
-        TypeOrmModule.forFeature([Post]),
+        TypeOrmModule.forFeature([User]),
       ],
-      providers: [NestPostReaderService, NestPostWriterService],
+      providers: [UserReaderService, UserWriterService],
       exports: [],
     }).compile();
 
-    readerService = app.get<NestPostReaderService>(NestPostReaderService);
-    writerService = app.get<NestPostWriterService>(NestPostWriterService);
+    readerService = app.get<UserReaderService>(UserReaderService);
+    writerService = app.get<UserWriterService>(UserWriterService);
 
     dataSource = app.get(DataSource);
 
-    await dataSource.createEntityManager().clear(Post);
+    await dataSource.createEntityManager().clear(User);
   });
 
   afterEach(async () => {
-    await dataSource.createEntityManager().clear(Post);
+    await dataSource.createEntityManager().clear(User);
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('should create a post using service', async () => {
-    const message = 'NestJS - A successful post';
+  it('should create a user using service if transaction was completed successfully', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
 
-    const [writtenPost, readPost] = await runInTransaction(async () => {
-      const writtenPost = await writerService.createPost(message);
-      const readPost = await readerService.getPostByMessage(message);
+    const writtenPost = await writerService.createUser(name, onTransactionCompleteSpy);
+    expect(writtenPost.name).toBe(name);
 
-      return [writtenPost, readPost];
-    });
+    const readPost = await readerService.findUserByName(name);
+    expect(readPost?.name).toBe(name);
 
-    expect(writtenPost.id).toBeGreaterThan(0);
-    expect(readPost.id).toBe(writtenPost.id);
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(true);
   });
 
-  it('should fail to create a post using service', async () => {
-    const message = 'NestJS - A unsuccessful post';
+  it('should fail to create a user using service if error was thrown', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
 
-    const promise = runInTransaction(async () => {
-      const writtenPost = await writerService.createPost(message, true);
-      const readPost = await readerService.getPostByMessage(message);
+    expect(() =>
+      writerService.createUserAndThrow(name, onTransactionCompleteSpy),
+    ).rejects.toThrowError();
 
-      return [writtenPost, readPost];
-    });
-
-    expect(promise).rejects.toThrowError();
-
-    const readPost = await readerService.getPostByMessage(message);
+    const readPost = await readerService.findUserByName(name);
     expect(readPost).toBeNull();
-  });
 
-  it('should create new transaction for "REQUIRES_NEW" propagation', async () => {
-    const message = 'NestJS - A successful post';
-
-    const [writtenPost, readPost, secondReadPost] = await runInTransaction(async () => {
-      const writtenPost = await writerService.createPost(message);
-
-      const readPost = await runInTransaction(
-        () => {
-          return readerService.getPostByMessage(message);
-        },
-        { propagation: Propagation.REQUIRES_NEW },
-      );
-
-      const secondReadPost = await readerService.getPostByMessage(message);
-
-      return [writtenPost, readPost, secondReadPost];
-    });
-
-    expect(writtenPost.id).toBeGreaterThan(0);
-    expect(secondReadPost.id).toBe(writtenPost.id);
-    expect(readPost).toBeNull();
-  });
-
-  it('should call transaction hooks', async () => {
-    const message = 'NestJS - A successful post';
-
-    const onTransactionCommit = jest.fn();
-    const onTransactionRollback = jest.fn();
-    const onTransactionComplete = jest.fn();
-
-    await runInTransaction(async () => {
-      await writerService.createPost(message);
-
-      runOnTransactionCommit(onTransactionCommit);
-      runOnTransactionRollback(onTransactionRollback);
-      runOnTransactionComplete(onTransactionComplete);
-    });
-
-    await sleep(100);
-
-    expect(onTransactionCommit).toBeCalledTimes(1);
-    expect(onTransactionRollback).toBeCalledTimes(0);
-    expect(onTransactionComplete).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(false);
   });
 });
