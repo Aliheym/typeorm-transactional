@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { AsyncLocalStorage } from 'async_hooks';
 
 import { StorageKey, StorageValue, StorageDriver, Storage } from '../interface';
 
