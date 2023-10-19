@@ -5,7 +5,7 @@
 ## It's a fork of [typeorm-transactional-cls-hooked](https://github.com/odavid/typeorm-transactional-cls-hooked) for new versions of TypeORM.
 
 
-A `Transactional` Method Decorator for [typeorm](http://typeorm.io/) that uses [cls-hooked](https://www.npmjs.com/package/cls-hooked) to handle and propagate transactions between different repositories and service methods.
+A `Transactional` Method Decorator for [typeorm](http://typeorm.io/) that uses [ALS](https://nodejs.org/api/async_context.html#class-asynclocalstorage) or [cls-hooked](https://www.npmjs.com/package/cls-hooked) to handle and propagate transactions between different repositories and service methods.
 
 See [Changelog](#CHANGELOG.md)
 
@@ -23,9 +23,10 @@ See [Changelog](#CHANGELOG.md)
   - [API](#api)
     - [Library Options](#library-options)
     - [Transaction Options](#transaction-options)
-    - [initializeTransactionalContext(options): void](#initializetransactionalcontext-void)
+    - [Storage Driver](#storage-driver)
+    - [initializeTransactionalContext(options): void](#initializetransactionalcontextoptions-void)
     - [addTransactionalDataSource(input): DataSource](#addtransactionaldatasourceinput-datasource)
-    - [runInTransaction(fn: Callback, options?: Options): Promise<...>](#runintransactionfn-callback-options-options-promise)
+    - [runInTransaction(fn: Callback, options?: Options): Promise\<...\>](#runintransactionfn-callback-options-options-promise)
     - [wrapInTransaction(fn: Callback, options?: Options): WrappedFunction](#wrapintransactionfn-callback-options-options-wrappedfunction)
     - [runOnTransactionCommit(cb: Callback): void](#runontransactioncommitcb-callback-void)
     - [runOnTransactionRollback(cb: Callback): void](#runontransactionrollbackcb-callback-void)
@@ -53,12 +54,12 @@ yarn add typeorm reflect-metadata
 
 ## Initialization
 
-In order to use it, you will first need to initialize the cls-hooked namespace before your application is started
+In order to use it, you will first need to initialize the transactional context before your application is started
 
 ```typescript
 import { initializeTransactionalContext } from 'typeorm-transactional';
 
-initializeTransactionalContext() // Initialize cls-hooked
+initializeTransactionalContext()
 ...
 app = express()
 ...
@@ -77,7 +78,7 @@ To be able to use TypeORM entities in transactions, you must first add a DataSou
 
 ```typescript
 import { DataSource } from 'typeorm';
-import { initializeTransactionalContext, addTransactionalDataSource } from 'typeorm-transactional';
+import { initializeTransactionalContext, addTransactionalDataSource, StorageDriver } from 'typeorm-transactional';
 ...
 const dataSource = new DataSource({
 	type: 'postgres',
@@ -88,7 +89,7 @@ const dataSource = new DataSource({
 });
 ...
 
-initializeTransactionalContext();
+initializeTransactionalContext({ storageDriver: StorageDriver.ASYNC_LOCAL_STORAGE });
 addTransactionalDataSource(dataSource);
 
 ...
@@ -298,10 +299,11 @@ Repositories, services, etc. can be mocked as usual.
 
 ```typescript
 {
+  storageDriver?: StorageDriver,
   maxHookHandlers?: number
 }
 ```
-
+- `storageDriver` - Determines which [underlying mechanism](#storage-driver) (like Async Local Storage or cls-hooked) the library should use for handling and propagating transactions. By default, it's `StorageDriver.CLS_HOOKED`.
 - `maxHookHandlers` - Controls how many hooks (`commit`, `rollback`, `complete`) can be used simultaneously. If you exceed the number of hooks of same type, you get a warning. This is a useful to find possible memory leaks. You can set this options to `0` or `Infinity` to indicate an unlimited number of listeners. By default, it's `10`.
 
 ### Transaction Options
@@ -314,13 +316,31 @@ Repositories, services, etc. can be mocked as usual.
 }
 ```
 
-- `connectionName`-  DataSource` name to use for this transactional context  ([the data sources](#data-sources))
+- `connectionName`-  DataSource name to use for this transactional context  ([the data sources](#data-sources))
 - `isolationLevel`- isolation level for transactional context ([isolation levels](#isolation-levels) )
 - `propagation`-  propagation behaviors for nest transactional contexts ([propagation behaviors](#transaction-propagation))
 
+### Storage Driver
+
+Option that determines which underlying mechanism the library should use for handling and propagating transactions.
+
+The possible variants:
+
+- `AUTO` - Automatically selects the appropriate storage mechanism based on the Node.js version, using `AsyncLocalStorage` for Node.js versions 16 and above, and defaulting to `cls-hooked` for earlier versions.
+- `CLS_HOOKED` - Utilizes the `cls-hooked` package to provide context storage, supporting both legacy Node.js versions with AsyncWrap for versions below 8.2.1, and using `async_hooks` for later versions.
+- `ASYNC_LOCAL_STORAGE` - Uses the built-in `AsyncLocalStorage` feature, available from Node.js version 16 onwards,
+
+> ⚠️ **WARNING:**  Currently, we use `CLS_HOOKED` by default for backward compatibility. However, in the next major release, this default will be switched to `AUTO`.
+
+```typescript
+import { StorageDriver } from 'typeorm-transactional'
+
+initializeTransactionalContext({ storageDriver: StorageDriver.AUTO });
+```
+
 ### initializeTransactionalContext(options): void
 
-Initialize `cls-hooked` namespace.
+Initialize transactional context.
 
 ```typescript
 initializeTransactionalContext(options?: TypeormTransactionalOptions);
