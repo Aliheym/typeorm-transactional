@@ -1,4 +1,5 @@
 import { EntityManager } from 'typeorm';
+import { TypeORMError } from 'typeorm/error/TypeORMError';
 import {
   DataSourceName,
   getDataSourceByName,
@@ -11,6 +12,7 @@ import { IsolationLevel } from '../enums/isolation-level';
 import { Propagation } from '../enums/propagation';
 import { runInNewHookContext } from '../hooks';
 import { TransactionalError } from '../errors/transactional';
+import { Fail } from '../utils/result';
 
 export interface WrapInTransactionOptions {
   /**
@@ -47,11 +49,62 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
       );
     }
 
+    const withTx = async <T>(
+      isolationOrRunInTransaction: IsolationLevel | ((entityManager: EntityManager) => Promise<T>),
+      runInTransactionParam?: (entityManager: EntityManager) => Promise<T>,
+    ) => {
+      const isolation =
+        typeof isolationOrRunInTransaction === 'string' ? isolationOrRunInTransaction : undefined;
+      const runInTransaction =
+        typeof isolationOrRunInTransaction === 'function'
+          ? isolationOrRunInTransaction
+          : runInTransactionParam;
+      if (!runInTransaction) {
+        throw new TypeORMError(
+          'Transaction method requires callback in second parameter if isolation level is supplied.',
+        );
+      }
+
+      const queryRunner = dataSource.createQueryRunner();
+      await queryRunner.connect();
+
+      try {
+        await queryRunner.startTransaction(isolation);
+        const result = await runInTransaction(queryRunner.manager);
+        if (result instanceof Fail) {
+          await queryRunner.rollbackTransaction();
+          return result;
+        }
+        await queryRunner.commitTransaction();
+        return result;
+      } catch (err) {
+        try {
+          // we throw original error even if rollback thrown an error
+          await queryRunner.rollbackTransaction();
+        } catch (rollbackError) {}
+        if (err instanceof Fail) {
+          return err;
+        }
+        throw err;
+      } finally {
+        // if we used a new query runner provider then release it
+        await queryRunner.release();
+      }
+    };
+
     const propagation = options?.propagation ?? Propagation.REQUIRED;
     const isolationLevel = options?.isolationLevel;
 
     const runOriginal = () => fn.apply(this, args);
-    const runWithNewHook = () => runInNewHookContext(context, runOriginal);
+    const runOrFailOriginal = async () => {
+      const result = await runOriginal();
+      if (result instanceof Fail) {
+        throw result;
+      }
+      return result;
+    };
+
+    const runWithNewHook = () => runInNewHookContext(context, runOrFailOriginal);
 
     const runWithNewTransaction = () => {
       const transactionCallback = async (entityManager: EntityManager) => {
@@ -68,11 +121,11 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
 
       if (isolationLevel) {
         return runInNewHookContext(context, () => {
-          return dataSource.transaction(isolationLevel, transactionCallback);
+          return withTx(isolationLevel, transactionCallback);
         });
       } else {
         return runInNewHookContext(context, () => {
-          return dataSource.transaction(transactionCallback);
+          return withTx(transactionCallback);
         });
       }
     };
@@ -86,44 +139,33 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
               "No existing transaction found for transaction marked with propagation 'MANDATORY'",
             );
           }
-
-          return runOriginal();
-
+          return runOrFailOriginal();
         case Propagation.NESTED:
           return runWithNewTransaction();
-
         case Propagation.NEVER:
           if (currentTransaction) {
             throw new TransactionalError(
               "Found an existing transaction, transaction marked with propagation 'NEVER'",
             );
           }
-
           return runWithNewHook();
-
         case Propagation.NOT_SUPPORTED:
           if (currentTransaction) {
             setEntityManagerByDataSourceName(context, connectionName, null);
             const result = await runWithNewHook();
             setEntityManagerByDataSourceName(context, connectionName, currentTransaction);
-
             return result;
           }
-
-          return runOriginal();
-
+          return runOrFailOriginal();
         case Propagation.REQUIRED:
           if (currentTransaction) {
-            return runOriginal();
+            return runOrFailOriginal();
           }
-
           return runWithNewTransaction();
-
         case Propagation.REQUIRES_NEW:
           return runWithNewTransaction();
-
         case Propagation.SUPPORTS:
-          return currentTransaction ? runOriginal() : runWithNewHook();
+          return currentTransaction ? runOrFailOriginal() : runWithNewHook();
       }
     });
   }

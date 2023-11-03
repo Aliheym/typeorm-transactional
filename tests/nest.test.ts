@@ -89,9 +89,80 @@ describe('Integration with Nest.js', () => {
     const name = 'John Doe';
     const onTransactionCompleteSpy = jest.fn();
 
-    expect(() =>
+    await expect(() =>
       writerService.createUserAndThrow(name, onTransactionCompleteSpy),
     ).rejects.toThrowError();
+
+    const readPost = await readerService.findUserByName(name);
+    expect(readPost).toBeNull();
+
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(false);
+  });
+
+  it('should create a user using service if return result ok', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
+
+    const writtenPostResult = await writerService.createUserAndReturnResultOk(
+      name,
+      onTransactionCompleteSpy,
+    );
+    expect((writtenPostResult.value as User).name).toBe(name);
+    expect(writtenPostResult.isOk()).toBeTruthy();
+    expect(writtenPostResult.isFail()).toBeFalsy();
+
+    const readPost = await readerService.findUserByName(name);
+    expect(readPost?.name).toBe(name);
+
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(true);
+  });
+
+  it('should fail to create a user using service if return result fail', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
+
+    const writtenPostResult = await writerService.createUserAndReturnResultFail(
+      name,
+      onTransactionCompleteSpy,
+    );
+    expect(writtenPostResult.isOk()).toBeFalsy();
+    expect(writtenPostResult.isFail()).toBeTruthy();
+
+    const readPost = await readerService.findUserByName(name);
+    expect(readPost).toBeNull();
+
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(false);
+  });
+
+  it('should fail to create a user using service if error was thrown due to sub service thrown', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
+
+    await expect(() =>
+      writerService.createUserAndThrowDueToSubServiceThrow(name, onTransactionCompleteSpy),
+    ).rejects.toThrowError();
+
+    const readPost = await readerService.findUserByName(name);
+    expect(readPost).toBeNull();
+
+    expect(onTransactionCompleteSpy).toBeCalledTimes(1);
+    expect(onTransactionCompleteSpy).toBeCalledWith(false);
+  });
+
+  it('should fail to create a user using service if error was return result fail due to sub service return result fail', async () => {
+    const name = 'John Doe';
+    const onTransactionCompleteSpy = jest.fn();
+
+    const writtenPostResult =
+      await writerService.createUserAndReturnResultFailDueToSubServiceReturnFail(
+        name,
+        onTransactionCompleteSpy,
+      );
+    expect(writtenPostResult.isOk()).toBeFalsy();
+    expect(writtenPostResult.isFail()).toBeTruthy();
 
     const readPost = await readerService.findUserByName(name);
     expect(readPost).toBeNull();

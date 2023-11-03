@@ -7,6 +7,7 @@ import {
   setHookInContext,
 } from '../common';
 import { StorageDriver } from '../storage/driver/interface';
+import { Fail } from '../utils/result';
 
 export const getTransactionalContextHook = () => {
   const context = getTransactionalContext();
@@ -22,10 +23,17 @@ export const getTransactionalContextHook = () => {
 export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) => {
   try {
     const result = await Promise.resolve(cb());
+    if (result instanceof Fail) {
+      setImmediate(() => {
+        hook.emit('rollback', result);
+        hook.emit('end', result);
+        hook.removeAllListeners();
+      });
+      return result;
+    }
 
     setImmediate(() => {
       hook.emit('commit');
-
       hook.emit('end', undefined);
       hook.removeAllListeners();
     });
@@ -34,7 +42,6 @@ export const runAndTriggerHooks = async (hook: EventEmitter, cb: () => unknown) 
   } catch (err) {
     setImmediate(() => {
       hook.emit('rollback', err);
-
       hook.emit('end', err);
       hook.removeAllListeners();
     });
