@@ -43,7 +43,7 @@ export const wrapInTransaction = <Fn extends (this: any, ...args: any[]) => Retu
     const dataSource = getDataSourceByName(connectionName);
     if (!dataSource) {
       throw new Error(
-        'No data sources defined in your app ... please call addTransactionalDataSources() before application start.',
+        'No data sources defined in your app ... please call addTransactionalDataSource() before application start.',
       );
     }
 
